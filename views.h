@@ -318,7 +318,7 @@ static const char _BODY_UPDATE[] PROGMEM = R"html(
 
     fileInput.addEventListener('change', () => {
       if (fileInput.files.length) {
-        fileName.textContent = '&#10003; ' + fileInput.files[0].name;
+        fileName.textContent = '✓; ' + fileInput.files[0].name;
         fileName.style.display = 'block';
       }
     });
@@ -346,10 +346,10 @@ static const char _BODY_UPDATE[] PROGMEM = R"html(
       };
       xhr.onload = () => {
         if (xhr.status === 200) {
-          statusMsg.textContent = '&#10003; Upload complete — rebooting…';
+          statusMsg.textContent = '✓; Upload complete — rebooting…';
           statusMsg.style.color = 'var(--accent2)';
         } else {
-          statusMsg.textContent = '&#10007; Upload failed (' + xhr.status + ')';
+          statusMsg.textContent = '✗; Upload failed (' + xhr.status + ')';
           statusMsg.style.color = 'var(--danger)';
         }
       };
@@ -401,7 +401,7 @@ static const char _BODY_FILE_UPLOAD[] PROGMEM = R"html(
 
     input.addEventListener('change', () => {
       if (input.files.length) {
-        label.textContent = '&#10003; ' + input.files[0].name;
+        label.textContent = '✓; ' + input.files[0].name;
         label.style.display = 'block';
       }
     });
@@ -429,10 +429,10 @@ static const char _BODY_FILE_UPLOAD[] PROGMEM = R"html(
       };
       xhr.onload = () => {
         if (xhr.status === 200) {
-          status.textContent = '&#10003; Upload complete';
+          status.textContent = '✓; Upload complete';
           status.style.color = 'var(--accent2)';
         } else {
-          status.textContent = '&#10007; Upload failed (' + xhr.status + ')';
+          status.textContent = '✗; Upload failed (' + xhr.status + ')';
           status.style.color = 'var(--danger)';
         }
       };
