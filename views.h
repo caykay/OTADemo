@@ -265,7 +265,7 @@ static const char _BODY_HOME[] PROGMEM = R"html(
 
     <div class='nav'>
       <a href='/update'>&#8599; Flash Firmware</a>
-      <a href='/fs-upload'>&#8599; Upload to File System</a>
+      <a href='/files'>&#8599; File System</a>
       <a href='/info'>&#8599; Device Info</a>
     </div>
   </div>
@@ -318,7 +318,7 @@ static const char _BODY_UPDATE[] PROGMEM = R"html(
 
     fileInput.addEventListener('change', () => {
       if (fileInput.files.length) {
-        fileName.textContent = '✓; ' + fileInput.files[0].name;
+        fileName.textContent = '✓ ' + fileInput.files[0].name;
         fileName.style.display = 'block';
       }
     });
@@ -346,10 +346,10 @@ static const char _BODY_UPDATE[] PROGMEM = R"html(
       };
       xhr.onload = () => {
         if (xhr.status === 200) {
-          statusMsg.textContent = '✓; Upload complete — rebooting…';
+          statusMsg.textContent = '✓ Upload complete — rebooting…';
           statusMsg.style.color = 'var(--accent2)';
         } else {
-          statusMsg.textContent = '✗; Upload failed (' + xhr.status + ')';
+          statusMsg.textContent = '✗ Upload failed (' + xhr.status + ')';
           statusMsg.style.color = 'var(--danger)';
         }
       };
@@ -361,7 +361,7 @@ static const char _BODY_UPDATE[] PROGMEM = R"html(
 // ---------------------------------------------------------------------------
 //  PAGE_FILE_UPLOAD  —  file system upload page
 // ---------------------------------------------------------------------------
-static const char _BODY_FILE_UPLOAD[] PROGMEM = R"html(
+static const char _BODY_FILES[] PROGMEM = R"html(
   <div class='topbar'>
     <span class='logo'>&#9632; ESP32 OTA Demo</span>
     <span class='chip'>FILES</span>
@@ -392,16 +392,23 @@ static const char _BODY_FILE_UPLOAD[] PROGMEM = R"html(
     <div id='fs-status' style='font-size:0.8rem;color:var(--muted);margin-top:0.8rem'></div>
   </div>
 
+  <div class='card'>
+    <h1>Files</h1>
+    <h2>LittleFS contents</h2>
+    <div id='file-list'><p>Loading...</p></div>
+  </div>
+
   <script>
     const input    = document.getElementById('fs-file-input');
     const label    = document.getElementById('fs-file-name');
     const progWrap = document.getElementById('fs-progress-wrap');
     const progBar  = document.getElementById('fs-progress-bar');
     const status   = document.getElementById('fs-status');
+    const fileList = document.getElementById('file-list');
 
     input.addEventListener('change', () => {
       if (input.files.length) {
-        label.textContent = '✓; ' + input.files[0].name;
+        label.textContent = '✓ ' + input.files[0].name;
         label.style.display = 'block';
       }
     });
@@ -429,15 +436,53 @@ static const char _BODY_FILE_UPLOAD[] PROGMEM = R"html(
       };
       xhr.onload = () => {
         if (xhr.status === 200) {
-          status.textContent = '✓; Upload complete';
+          status.textContent = '✓ Upload complete';
           status.style.color = 'var(--accent2)';
         } else {
-          status.textContent = '✗; Upload failed (' + xhr.status + ')';
+          status.textContent = '✗ Upload failed (' + xhr.status + ')';
           status.style.color = 'var(--danger)';
         }
       };
       xhr.send(formData);
     }
+
+    function deleteFile(name) {
+      fetch('/delete?name=' + encodeURIComponent(name), { method: 'DELETE' })
+        .then(r => {
+          if (r.ok)
+            loadFiles();
+          else
+            alert('Delete failed: ' + r.status);
+        });
+    }
+
+    function loadFiles() {
+      fetch('/files', { headers: { 'Accept': 'application/json' } })
+        .then(r => r.json())
+        .then(files => {
+          if (!files.length) {
+            fileList.innerHTML = '<p>No files found.</p>';
+            return;
+          }
+          fileList.innerHTML = files.map(f => `
+            <div class='stat' style='display:flex;justify-content:space-between;align-items:center;grid-column:span 2'>
+              <div>
+                <div class='label'>${f.name}</div>
+                <div class='value' style='font-size:0.75rem'>${f.size} bytes</div>
+              </div>
+              <button class='btn outline' style='color:var(--danger);border-color:var(--danger)'
+                onclick='deleteFile("${f.name}")'>Delete</button>
+            </div>
+          `).join('');
+        })
+        .catch((e) => 
+        { 
+            fileList.innerHTML = '<p style="color:var(--danger)">Failed to load files.</p>'; 
+            console.error("An error occured while fetching files: ", e.message);
+        });
+    }
+
+    loadFiles();
   </script>
 )html";
 
@@ -462,9 +507,7 @@ static const char _BODY_NOT_FOUND[] PROGMEM = R"html(
 
 inline String pageHome() { return buildPage("Home", _BODY_HOME); }
 inline String pageUpdate() { return buildPage("Update", _BODY_UPDATE); }
-inline String pageFSUpload() {
-  return buildPage("File Upload", _BODY_FILE_UPLOAD);
-}
+inline String pageFSFiles() { return buildPage("Files", _BODY_FILES); }
 inline String pageNotFound() { return buildPage("404", _BODY_NOT_FOUND); }
 
 // Add more pages following the same pattern:

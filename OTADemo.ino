@@ -15,6 +15,15 @@ constexpr char* Password = "****";
 static File uploadFile; // file to be uploaded to LittleFS
 static bool uploadCompleted = false;
 
+String formatPath(const String& path)
+{
+  String result = path;
+  if (!result.startsWith("/")) {
+    result = "/" + result;
+  }
+  return result;
+}
+
 void startMDNS()
 {
   if (!MDNS.begin(Hostname)) {
@@ -55,12 +64,9 @@ void handleFileUpload()
     case HTTPUploadStatus::UPLOAD_FILE_START:
     {
       uploadCompleted = false;
-      String filename = upload.filename;
-      if (!filename.startsWith("/")) {
-        filename = "/" + filename;
-      }
+      String filename = formatPath(upload.filename);
       uploadFile = LittleFS.open(filename, FILE_WRITE, true);
-      Serial.printf("Starting file upload. File: %-30s %6u bytes\n", uploadFile.name(), uploadFile.size());
+      Serial.printf("handleFileUpload(): Starting file upload. File: %-30s %6u bytes\n", uploadFile.name(), uploadFile.size());
       Serial.printf("UPLOAD_FILE_START: Uploaded %6u out of %6u bytes\n", uploadFile.size(), upload.totalSize);
       break;
     }
@@ -95,6 +101,55 @@ void handleFileUpload()
   // UPLOAD_FILE_ABORTED
 }
 
+void handleDelete()
+{
+  if (server.args() == 0) {
+    // return fail
+    server.send(400, "text/plain", "Invalid filename");
+    return;
+  }
+  String path = formatPath(server.arg(0));
+  Serial.printf("handleDelete(): Deleting %s ...\n", path);
+  if (path == "/" || !LittleFS.exists((char *)path.c_str())) {
+    // return fail
+    Serial.println("handleDelete(): File does not exist");
+    server.send(404, "text/plain", "Resource does not exist");
+    return;
+  }
+  // do the actual delete
+  if (!LittleFS.remove(path))
+  {
+    Serial.printf("handleDelete(): Failed to delete file: %s\n", path);
+    server.send(404, "text/plain", "Delete failed");
+    return;
+  }
+  // return OK
+  server.send(200, "text/plain", "");
+}
+
+void handleFileList()
+{
+  // check if client HTTP request header has "application/json"
+  if(server.hasHeader("Accept") && server.header("Accept").indexOf("application/json") >= 0)
+  {
+    String json = "[";
+    File root = LittleFS.open("/");
+    File file = root.openNextFile();
+    while (file)
+    {
+      // if json already has a file entry
+      if (json.length() > 1)
+        json += ",";
+      json += R"({"name":")" + String(file.name()) + R"(","size":)" + file.size() + R"(})";
+      file = root.openNextFile(); // not sure if we should be calling file.close after?
+    }
+    json += "]";
+    server.send(200, "application/json", json);
+    return;
+  }
+  server.send(200, "text/html", pageFSFiles());
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -112,20 +167,21 @@ void setup()
     Serial.print('.');
   }
   Serial.println();
-  Serial.printf("Connected to Wifi: %s\n", WiFi.localIP().toString());
+  Serial.printf("[WiFi] Connected to Wifi: %s\n", WiFi.localIP().toString());
+
   startMDNS();
 
   server.on("/", []{
     server.send(200, "text/html; charset=utf-8", pageHome());
   });
 
-  server.on("/fs-upload", HTTP_GET, []{
-    server.send(200, "text/html; charset=utf-8", pageFSUpload());
-  });
-
   server.on("/update", HTTP_GET, []{
     server.send(200, "text/html; charset=utf-8", pageUpdate());
   });
+
+  server.on("/files", HTTP_GET, handleFileList);
+
+  server.on("/delete", HTTP_DELETE, handleDelete);
 
   // HTTP_POST actual FS file upload
   server.on("/fs-upload", HTTP_POST, []{
@@ -147,6 +203,13 @@ void setup()
   server.onNotFound([]{
     server.send(404, "text/html", pageNotFound());
   });
+
+  // add "Accept" header to the collected headers so the server can explicitly handle
+  // some client requested response content i.e. /files can either return html or json
+  // depending on the client request http header accept type
+
+  const char* headerKeys[] = { "Accept" };
+  server.collectHeaders(headerKeys, 1);
 
   server.begin();
 }
