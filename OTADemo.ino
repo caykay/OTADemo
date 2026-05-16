@@ -6,6 +6,7 @@
 #include <LittleFS.h>
 
 #include "views.h"
+#include "FirmwareManager.h"
 
 static WebServer server(80);
 constexpr char* Hostname = "esp32";
@@ -150,6 +151,20 @@ void handleFileList()
   server.send(200, "text/html", pageFSFiles());
 }
 
+void handleFirmwareUpdate()
+{
+  HTTPUpload& upload = server.upload();
+  esp_err_t result = onWrite(upload.status, upload.buf, upload.currentSize);
+  if (result != ESP_OK)
+  {
+    server.send(404, "text/plain", "firmware upload failed");
+  }
+  else if(upload.status == UPLOAD_FILE_END)
+  {
+    server.send(200, "text/plain", "");
+  }
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -193,12 +208,7 @@ void setup()
   handleFileUpload);
 
   // HTTP_POST actual firmware file upload
-  server.on("/update", HTTP_POST, []{
-    server.send(200, "text/plain", "");
-  },
-  []{
-    Serial.println("Firmware update not yet implemented");
-  });
+  server.on("/update", HTTP_POST, handleFirmwareUpdate);
 
   server.onNotFound([]{
     server.send(404, "text/html", pageNotFound());
