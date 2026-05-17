@@ -12,6 +12,7 @@ static WebServer server(80);
 constexpr char* Hostname = "esp32";
 constexpr char* Ssid = "****";
 constexpr char* Password = "****";
+constexpr char* version = "0.1.1";
 
 static File uploadFile; // file to be uploaded to LittleFS
 static bool uploadCompleted = false;
@@ -211,6 +212,12 @@ void setup()
     server.send(200, "text/html; charset=utf-8", pageUpdate());
   });
 
+  server.on("/version", HTTP_GET, []{
+    String json = "[";
+    json += R"({"version":")" + String(version) + R"("}])";
+    server.send(200, "application/json", json);
+  });
+
   server.on("/files", HTTP_GET, handleFileList);
 
   server.on("/delete", HTTP_DELETE, handleDelete);
@@ -229,7 +236,10 @@ void setup()
     if (firmwareUploadResult.started && firmwareUploadResult.success)
     {
       firmwareUploadResult.reset();
-      server.send(200, "text/plain", "");
+      server.send(200, "text/plain", "firmware uploaded, restarting");
+      // flush() ensures all outgoing data is transmitted. We need this before we restart the board and close the client connection
+      server.client().flush();
+      // delay(1); // not sure if this is necessary with flush()
       // restart to apply firmware update
       esp_restart();
     }
@@ -240,9 +250,9 @@ void setup()
     }
   }, handleFirmwareUpdate);
 
-  // server.on("/info", HTTP_GET, []{
-  //   server.send(200, "text/plain", "Congratz this is the new firmware");
-  // });
+  server.on("/info", HTTP_GET, []{
+    server.send(200, "text/plain", "Congratz this is the new firmware");
+  });
 
   server.onNotFound([]{
     server.send(404, "text/html", pageNotFound());
