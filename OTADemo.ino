@@ -174,11 +174,7 @@ void handleFirmwareUpdate()
   // ensure we only process the firmware bytes when previous ota steps had ESP_OK result
   if(firmwareUploadResult.success)
   {
-    esp_err_t result = FirmwareManager::onWrite(upload.status, upload.buf, upload.currentSize, [](){
-      // on ota firmware update complete (before restart)
-      server.send(200, "text/plain", "");
-      firmwareUploadResult.reset();
-    });
+    esp_err_t result = FirmwareManager::onWrite(upload.status, upload.buf, upload.currentSize);
     if (result != ESP_OK)
     {
       firmwareUploadResult.success = false;
@@ -231,10 +227,17 @@ void setup()
   // HTTP_POST actual firmware file upload
   server.on("/update", HTTP_POST, []{
     if (firmwareUploadResult.started && firmwareUploadResult.success)
-      server.send(200, "text/plain", ""); // this is likely never called since firmware update causes a full board restart
+    {
+      firmwareUploadResult.reset();
+      server.send(200, "text/plain", "");
+      // restart to apply firmware update
+      esp_restart();
+    }
     else
+    {
+      firmwareUploadResult.reset();
       server.send(404, "text/plain", "firmware upload failed");
-    firmwareUploadResult.reset();
+    }
   }, handleFirmwareUpdate);
 
   // server.on("/info", HTTP_GET, []{

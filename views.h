@@ -346,13 +346,29 @@ static const char _BODY_UPDATE[] PROGMEM = R"html(
       };
       xhr.onload = () => {
         if (xhr.status === 200) {
-          statusMsg.textContent = '✓ Upload complete — rebooting…';
+          statusMsg.textContent = '✓ Upload complete — rebooting, please wait...';
           statusMsg.style.color = 'var(--accent2)';
+          setTimeout(() => pollUntilBack(), 3000); // redirect to "/" after 3 seconds
         } else {
           statusMsg.textContent = '✗ Upload failed (' + xhr.status + ')';
           statusMsg.style.color = 'var(--danger)';
         }
       };
+
+      function pollUntilBack(attempts = 0) {
+        if (attempts >= 5) {
+          status.textContent = 'Could not contact device after restart.';
+          status.style.color = 'var(--danger)';
+          return;
+        }
+        fetch('/')
+          .then(r => {
+            if (r.ok) window.location.href = '/';
+            else      setTimeout(() => pollUntilBack(attempts + 1), 1000);
+          })
+          .catch(() => setTimeout(() => pollUntilBack(attempts + 1), 1000));
+      }
+
       xhr.send(formData);
     }
   </script>
