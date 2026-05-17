@@ -61,7 +61,7 @@ esp_err_t onWrite(const HTTPUploadStatus uploadStatus, uint8_t *buffer,
               "firmware partition as the boot partition");
       } else {
         Serial.println("[OTA] Firmware Upload COMPLETE, restarting board");
-        esp_restart();
+        // esp_restart();
       }
     }
     return result;
