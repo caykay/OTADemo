@@ -12,7 +12,7 @@ static void abort(const char *message) {
 
 namespace FirmwareManager {
 esp_err_t onWrite(const HTTPUploadStatus uploadStatus, uint8_t *buffer,
-                  const size_t bufferSize) {
+                  const size_t bufferSize, OnComplete onComplete) {
   const esp_partition_t *bootPartition = esp_ota_get_boot_partition();
   const esp_partition_t *runningPartition = esp_ota_get_running_partition();
   if (bootPartition != runningPartition) {
@@ -60,6 +60,8 @@ esp_err_t onWrite(const HTTPUploadStatus uploadStatus, uint8_t *buffer,
         abort("[OTA] esp_ota_set_boot_partition: could not set the "
               "firmware partition as the boot partition");
       } else {
+        if (onComplete)
+          onComplete();
         Serial.println("[OTA] Firmware Upload COMPLETE, restarting board");
         esp_restart();
       }
