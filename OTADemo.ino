@@ -8,11 +8,12 @@
 #include "views.h"
 #include "FirmwareManager.h"
 
+#define APP_VERSION  "1.0.0"
+
 static WebServer server(80);
 constexpr char* Hostname = "esp32";
 constexpr char* Ssid = "****";
 constexpr char* Password = "****";
-constexpr char* version = "0.1.1";
 
 static File uploadFile; // file to be uploaded to LittleFS
 static bool uploadCompleted = false;
@@ -214,7 +215,7 @@ void setup()
 
   server.on("/version", HTTP_GET, []{
     String json = "[";
-    json += R"({"version":")" + String(version) + R"("}])";
+    json += R"({"version":")" + String(APP_VERSION) + R"("}])";
     server.send(200, "application/json", json);
   });
 
