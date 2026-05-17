@@ -16,6 +16,22 @@ constexpr char* Password = "****";
 static File uploadFile; // file to be uploaded to LittleFS
 static bool uploadCompleted = false;
 
+// firmware upload state
+struct FirmwareUploadStatus
+{
+  bool success = true;
+  bool started = false;
+  String error = "";
+  void reset()
+  {
+    success = true;
+    started = false;
+    error = "";
+    FirmwareManager::reset();
+  }
+};
+static FirmwareUploadStatus firmwareUploadResult;
+
 String formatPath(const String& path)
 {
   String result = path;
@@ -153,15 +169,16 @@ void handleFileList()
 
 void handleFirmwareUpdate()
 {
+  firmwareUploadResult.started = true;
   HTTPUpload& upload = server.upload();
-  esp_err_t result = onWrite(upload.status, upload.buf, upload.currentSize);
-  if (result != ESP_OK)
+  // ensure we only process the firmware bytes when previous ota steps had ESP_OK result
+  if(firmwareUploadResult.success)
   {
-    server.send(404, "text/plain", "firmware upload failed");
-  }
-  else if(upload.status == UPLOAD_FILE_END)
-  {
-    server.send(200, "text/plain", "");
+    esp_err_t result = FirmwareManager::onWrite(upload.status, upload.buf, upload.currentSize);
+    if (result != ESP_OK)
+    {
+      firmwareUploadResult.success = false;
+    }
   }
 }
 
@@ -208,7 +225,17 @@ void setup()
   handleFileUpload);
 
   // HTTP_POST actual firmware file upload
-  server.on("/update", HTTP_POST, handleFirmwareUpdate);
+  server.on("/update", HTTP_POST, []{
+    if (firmwareUploadResult.started && firmwareUploadResult.success)
+      server.send(200, "text/plain", "");
+    else
+      server.send(404, "text/plain", "firmware upload failed");
+    firmwareUploadResult.reset();
+  }, handleFirmwareUpdate);
+
+  // server.on("/info", HTTP_GET, []{
+  //   server.send(200, "text/plain", "Congratz this is the new firmware");
+  // });
 
   server.onNotFound([]{
     server.send(404, "text/html", pageNotFound());
