@@ -213,9 +213,9 @@ void setup()
     server.send(200, "text/html; charset=utf-8", pageUpdate());
   });
 
-  server.on("/version", HTTP_GET, []{
-    String json = "[";
-    json += R"({"version":")" + String(APP_VERSION) + R"("}])";
+  server.on("/stats", HTTP_GET, []{
+    String json = R"({"version":")";
+    json += String(APP_VERSION) + R"("})";
     server.send(200, "application/json", json);
   });
 
@@ -240,7 +240,7 @@ void setup()
       server.send(200, "text/plain", "firmware uploaded, restarting");
       // flush() ensures all outgoing data is transmitted. We need this before we restart the board and close the client connection
       server.client().flush();
-      // delay(1); // not sure if this is necessary with flush()
+      delay(200); // I this was not necessary with flush() but need to be sure that client buffer is sent
       // restart to apply firmware update
       esp_restart();
     }

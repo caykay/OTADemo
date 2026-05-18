@@ -255,7 +255,7 @@ static const char _BODY_HOME[] PROGMEM = R"html(
       </div>
       <div class='stat'>
         <div class='label'>Firmware</div>
-        <div class='value'>v0.1.0</div>
+        <div class='value' id='firmware-version'>v0.1.0</div>
       </div>
       <div class='stat'>
         <div class='label'>Status</div>
@@ -269,6 +269,31 @@ static const char _BODY_HOME[] PROGMEM = R"html(
       <a href='/info'>&#8599; Device Info</a>
     </div>
   </div>
+
+  <script>
+    const version    = document.getElementById('firmware-version');
+    const DefaultVersion = "0.0.0";
+
+    function getStats()
+    {
+      fetch('/stats')
+      .then(r => r.json())
+      .then(stats => {
+          if (!Object.keys(stats))
+          {
+            version.textContent = DefaultVersion;
+            return;
+          }
+          if(stats.version)
+            version.textContent = stats.version;
+        })
+      .catch((e) => {
+            console.error("An error occured while fetching board stats: ", e.message);
+        })
+    }
+
+    getStats();
+  </script>
 )html";
 
 // ---------------------------------------------------------------------------
